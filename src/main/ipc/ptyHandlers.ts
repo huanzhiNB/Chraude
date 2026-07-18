@@ -7,7 +7,8 @@ export function registerPtyHandlers(getWebContents: () => WebContents | undefine
   const manager = new PtyManager(
     (event) => getWebContents()?.send(IPC.ptyData, event),
     (event) => getWebContents()?.send(IPC.ptyExit, event),
-    (event) => getWebContents()?.send(IPC.ptyTitle, event)
+    (event) => getWebContents()?.send(IPC.ptyTitle, event),
+    (event) => getWebContents()?.send(IPC.ptyCwd, event)
   )
 
   ipcMain.handle(IPC.ptyCreate, (_event, opts: PtyCreateOptions) => {

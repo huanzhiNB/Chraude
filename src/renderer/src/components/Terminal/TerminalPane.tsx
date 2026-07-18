@@ -60,6 +60,7 @@ export default function TerminalPane({
     let unsubData: (() => void) | undefined
     let unsubExit: (() => void) | undefined
     let unsubTitle: (() => void) | undefined
+    let unsubCwd: (() => void) | undefined
 
     loadRendererAddon(term, () => disposed)
 
@@ -78,6 +79,9 @@ export default function TerminalPane({
       })
       unsubTitle = window.chraude.pty.onTitle(({ sessionId: sid, title }) => {
         if (sid === id) useTabStore.getState().setPaneTitle(paneId, title)
+      })
+      unsubCwd = window.chraude.pty.onCwd(({ sessionId: sid, cwd }) => {
+        if (sid === id) useTabStore.getState().setPaneCwd(paneId, cwd)
       })
     })
 
@@ -99,6 +103,7 @@ export default function TerminalPane({
       unsubData?.()
       unsubExit?.()
       unsubTitle?.()
+      unsubCwd?.()
       try {
         term.dispose()
       } finally {

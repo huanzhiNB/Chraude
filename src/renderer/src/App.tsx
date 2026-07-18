@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import TabBar from './components/TabBar/TabBar'
+import AddressBar from './components/AddressBar/AddressBar'
 import TerminalWorkspace from './components/Terminal/TerminalWorkspace'
 import { useTabStore } from './state/store'
 
@@ -28,6 +29,7 @@ function App(): React.JSX.Element {
   return (
     <>
       <TabBar />
+      <AddressBar />
       <TerminalWorkspace />
     </>
   )

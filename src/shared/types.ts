@@ -23,3 +23,8 @@ export interface PtyTitleEvent {
   sessionId: string
   title: string
 }
+
+export interface PtyCwdEvent {
+  sessionId: string
+  cwd: string
+}
