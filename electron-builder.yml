@@ -1,0 +1,39 @@
+appId: com.chraude.app
+productName: Chraude
+directories:
+  buildResources: build
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+asarUnpack:
+  - resources/**
+  # node-pty's native binary (pty.node) and its spawn-helper executable can't
+  # be dlopen'd/exec'd from inside an asar archive — the whole package needs
+  # to land as real files on disk, not just its .node file.
+  - '**/node_modules/node-pty/**'
+mac:
+  # DMG is left out of the target list: electron-builder's bundled dmgbuild
+  # (Python) tool has a reproducible bug on this macOS version — any write to
+  # the disk image right after mounting it (volume icon, background image,
+  # ...) fails with "Read-only file system", regardless of which of those
+  # features is disabled. That's a systemic mount-timing bug in dmgbuild
+  # itself, not something fixable from our config. zip is a fully valid,
+  # working distributable in the meantime (just double-click to extract the
+  # .app) — revisit dmg if a fixed electron-builder/dmgbuild version lands.
+  target:
+    - zip
+  category: public.app-category.developer-tools
+  entitlementsInherit: build/entitlements.mac.plist
+  hardenedRuntime: true
+  notarize: false
+  # No Developer ID Application certificate is set up on this machine — only
+  # "Apple Development" certs (for Xcode device debugging, not distribution)
+  # are in the keychain. identity: null skips auto-discovery of those and
+  # falls back to ad-hoc signing, which is fine for running locally; real
+  # distribution to other machines needs a real Developer ID cert + notarization.
+  identity: null
+npmRebuild: false

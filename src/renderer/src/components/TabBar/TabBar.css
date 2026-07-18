@@ -1,0 +1,91 @@
+.chraude-tabbar {
+  display: flex;
+  align-items: stretch;
+  height: 40px;
+  flex-shrink: 0;
+  background: #2b2b2b;
+  -webkit-app-region: drag;
+}
+
+.chraude-tabbar__spacer {
+  width: 78px;
+  flex-shrink: 0;
+}
+
+.chraude-tabbar__tabs {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-app-region: no-drag;
+}
+
+.chraude-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 120px;
+  max-width: 220px;
+  padding: 0 10px;
+  border-radius: 8px 8px 0 0;
+  color: #b0b0b0;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.chraude-tab:hover {
+  background: #363636;
+  color: #e0e0e0;
+}
+
+.chraude-tab--active {
+  background: #1e1e1e;
+  color: #f0f0f0;
+}
+
+.chraude-tab__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chraude-tab__close {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chraude-tab__close:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.chraude-new-tab {
+  flex-shrink: 0;
+  width: 32px;
+  align-self: center;
+  height: 26px;
+  margin: 0 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #b0b0b0;
+  font-size: 16px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.chraude-new-tab:hover {
+  background: #363636;
+  color: #e0e0e0;
+}
