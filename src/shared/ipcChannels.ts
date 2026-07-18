@@ -6,6 +6,7 @@ export const IPC = {
   ptyData: 'pty:data',
   ptyExit: 'pty:exit',
   ptyTitle: 'pty:title',
+  ptyCwd: 'pty:cwd',
   menuNewTab: 'menu:new-tab',
   menuClose: 'menu:close',
   menuSelectTab: 'menu:select-tab',

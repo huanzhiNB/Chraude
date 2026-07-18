@@ -1,0 +1,38 @@
+.chraude-addressbar {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  flex-shrink: 0;
+  padding: 0 10px;
+  background: #252525;
+  -webkit-app-region: drag;
+}
+
+.chraude-addressbar__pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  background: #363636;
+  color: #cfcfcf;
+  font-size: 12px;
+}
+
+.chraude-addressbar__icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  opacity: 0.8;
+}
+
+.chraude-addressbar__path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}

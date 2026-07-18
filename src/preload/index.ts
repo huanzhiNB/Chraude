@@ -3,6 +3,7 @@ import { IPC } from '@shared/ipcChannels'
 import type {
   PtyCreateOptions,
   PtyCreateResult,
+  PtyCwdEvent,
   PtyDataEvent,
   PtyExitEvent,
   PtyTitleEvent
@@ -32,7 +33,8 @@ const chraudeAPI = {
     },
     onData: (cb: (event: PtyDataEvent) => void): (() => void) => subscribe(IPC.ptyData, cb),
     onExit: (cb: (event: PtyExitEvent) => void): (() => void) => subscribe(IPC.ptyExit, cb),
-    onTitle: (cb: (event: PtyTitleEvent) => void): (() => void) => subscribe(IPC.ptyTitle, cb)
+    onTitle: (cb: (event: PtyTitleEvent) => void): (() => void) => subscribe(IPC.ptyTitle, cb),
+    onCwd: (cb: (event: PtyCwdEvent) => void): (() => void) => subscribe(IPC.ptyCwd, cb)
   },
   menu: {
     onNewTab: (cb: () => void): (() => void) => subscribe(IPC.menuNewTab, cb),

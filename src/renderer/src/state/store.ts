@@ -20,6 +20,8 @@ interface TabStore {
   // displayed title is whichever pane in it is currently active, so
   // switching focus between panes naturally updates the tab title too.
   paneTitles: Record<string, string>
+  // Same per-pane-keyed pattern as paneTitles, for the directory pill.
+  paneCwds: Record<string, string>
   addTab: () => void
   closeTab: (tabId: string) => void
   setActiveTab: (tabId: string) => void
@@ -30,6 +32,7 @@ interface TabStore {
   closeActivePane: () => void
   resizeSplit: (tabId: string, splitId: string, sizes: number[]) => void
   setPaneTitle: (paneId: string, title: string) => void
+  setPaneCwd: (paneId: string, cwd: string) => void
 }
 
 const initialTab = createTab()
@@ -38,6 +41,7 @@ export const useTabStore = create<TabStore>((set, get) => ({
   tabs: [initialTab],
   activeTabId: initialTab.id,
   paneTitles: {},
+  paneCwds: {},
 
   addTab: () => {
     const tab = createTab()
@@ -131,5 +135,9 @@ export const useTabStore = create<TabStore>((set, get) => ({
 
   setPaneTitle: (paneId, title) => {
     set((s) => ({ paneTitles: { ...s.paneTitles, [paneId]: title } }))
+  },
+
+  setPaneCwd: (paneId, cwd) => {
+    set((s) => ({ paneCwds: { ...s.paneCwds, [paneId]: cwd } }))
   }
 }))

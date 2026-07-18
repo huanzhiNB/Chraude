@@ -42,6 +42,30 @@ function buildEnv(): NodeJS.ProcessEnv {
   }
 }
 
+const HOME_DIR = os.homedir()
+
+/**
+ * node-pty has no API for a session's current working directory — only its
+ * foreground process's *name* (used for tab titles). lsof is the standard
+ * macOS way to read a process's actual cwd (there's no /proc here). This
+ * reads the shell process's own cwd (not whatever foreground child, if any,
+ * is currently running), matching what a shell's own prompt/OSC7 would show.
+ */
+export function getShellCwd(pid: number): string | undefined {
+  try {
+    const output = execFileSync('lsof', ['-a', '-d', 'cwd', '-p', String(pid), '-Fn'], {
+      encoding: 'utf8',
+      timeout: 1000
+    })
+    const line = output.split('\n').find((l) => l.startsWith('n'))
+    if (!line) return undefined
+    const path = line.slice(1)
+    return path.startsWith(HOME_DIR) ? `~${path.slice(HOME_DIR.length)}` : path
+  } catch {
+    return undefined
+  }
+}
+
 export function spawnSession(opts: PtyCreateOptions): IPty {
   const shell = resolveShell()
   const loginFlag = /zsh|bash/.test(shell) ? ['-l'] : []
