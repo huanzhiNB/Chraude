@@ -3,16 +3,35 @@ import { IPC } from '@shared/ipcChannels'
 import type { PtyCreateOptions } from '@shared/types'
 import { PtyManager } from '../pty/PtyManager'
 
-export function registerPtyHandlers(getWebContents: () => WebContents | undefined): PtyManager {
+export interface PtyHandlers {
+  manager: PtyManager
+  // A tab's WebContentsView never changes identity across a window move (see
+  // the tab tear-off design), so session ownership never needs reassigning —
+  // only cleared out when that view's tab is genuinely closed.
+  killAllForOwner: (webContents: WebContents) => void
+}
+
+export function registerPtyHandlers(): PtyHandlers {
+  const owners = new Map<string, WebContents>()
+
+  function send(sessionId: string, channel: string, payload: unknown): void {
+    const owner = owners.get(sessionId)
+    if (owner && !owner.isDestroyed()) owner.send(channel, payload)
+  }
+
   const manager = new PtyManager(
-    (event) => getWebContents()?.send(IPC.ptyData, event),
-    (event) => getWebContents()?.send(IPC.ptyExit, event),
-    (event) => getWebContents()?.send(IPC.ptyTitle, event),
-    (event) => getWebContents()?.send(IPC.ptyCwd, event)
+    (event) => send(event.sessionId, IPC.ptyData, event),
+    (event) => {
+      send(event.sessionId, IPC.ptyExit, event)
+      owners.delete(event.sessionId)
+    },
+    (event) => send(event.sessionId, IPC.ptyTitle, event),
+    (event) => send(event.sessionId, IPC.ptyCwd, event)
   )
 
-  ipcMain.handle(IPC.ptyCreate, (_event, opts: PtyCreateOptions) => {
+  ipcMain.handle(IPC.ptyCreate, (event, opts: PtyCreateOptions) => {
     const sessionId = manager.create(opts)
+    owners.set(sessionId, event.sender)
     return { sessionId }
   })
 
@@ -26,7 +45,17 @@ export function registerPtyHandlers(getWebContents: () => WebContents | undefine
 
   ipcMain.on(IPC.ptyKill, (_event, sessionId: string) => {
     manager.kill(sessionId)
+    owners.delete(sessionId)
   })
 
-  return manager
+  function killAllForOwner(webContents: WebContents): void {
+    for (const [sessionId, owner] of owners) {
+      if (owner === webContents) {
+        manager.kill(sessionId)
+        owners.delete(sessionId)
+      }
+    }
+  }
+
+  return { manager, killAllForOwner }
 }

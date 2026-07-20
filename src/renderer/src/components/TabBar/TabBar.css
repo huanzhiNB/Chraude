@@ -18,7 +18,11 @@
   flex: 1;
   min-width: 0;
   overflow-x: auto;
-  -webkit-app-region: no-drag;
+  /* Deliberately no -webkit-app-region here (inherits 'drag' from
+     .chraude-tabbar): this container is wider than the tabs it holds, and
+     any empty space after the last tab must stay a window-drag region,
+     matching Chrome. Only the individual .chraude-tab elements — which
+     actually need to be clickable/sortable — opt back into no-drag. */
 }
 
 .chraude-tab {

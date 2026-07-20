@@ -7,14 +7,12 @@ import TerminalPane from './TerminalPane'
 import SplitResizer from './SplitResizer'
 
 interface PaneGridProps {
-  tabId: string
   root: SplitTreeNode
   activePaneId: string
   visible: boolean
 }
 
 export default function PaneGrid({
-  tabId,
   root,
   activePaneId,
   visible
@@ -38,8 +36,7 @@ export default function PaneGrid({
 
       // Re-derive current sizes from the live store rather than a prop closure
       // so back-to-back drags always start from up-to-date numbers.
-      const tab = useTabStore.getState().tabs.find((t) => t.id === tabId)
-      const splitNode = tab && findSplitNode(tab.root, resizer.splitId)
+      const splitNode = findSplitNode(useTabStore.getState().root, resizer.splitId)
       if (!splitNode) return
       const startSizes = [...splitNode.sizes]
       const minSize = 0.1
@@ -62,7 +59,7 @@ export default function PaneGrid({
         }
         newSizes[resizer.index] = newA
         newSizes[resizer.index + 1] = newB
-        resizeSplit(tabId, resizer.splitId, newSizes)
+        resizeSplit(resizer.splitId, newSizes)
       }
       const handleMouseUp = (): void => {
         window.removeEventListener('mousemove', handleMouseMove)
@@ -77,7 +74,7 @@ export default function PaneGrid({
       {[...panes.entries()].map(([paneId, rect]) => (
         <div
           key={paneId}
-          onMouseDown={() => setActivePane(tabId, paneId)}
+          onMouseDown={() => setActivePane(paneId)}
           style={{
             position: 'absolute',
             boxSizing: 'border-box',
