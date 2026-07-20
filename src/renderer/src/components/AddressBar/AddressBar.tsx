@@ -1,4 +1,4 @@
-import { useTabStore } from '../../state/store'
+import { useChromeStore } from '../../state/chromeStore'
 import './AddressBar.css'
 
 function FolderIcon(): React.JSX.Element {
@@ -18,12 +18,11 @@ function FolderIcon(): React.JSX.Element {
 // A Chrome-omnibox-style pill showing the active pane's current directory,
 // kept live via the same foreground-process-poll pipeline as tab titles.
 export default function AddressBar(): React.JSX.Element {
-  const tabs = useTabStore((s) => s.tabs)
-  const activeTabId = useTabStore((s) => s.activeTabId)
-  const paneCwds = useTabStore((s) => s.paneCwds)
+  const tabs = useChromeStore((s) => s.tabs)
+  const activeTabId = useChromeStore((s) => s.activeTabId)
 
   const activeTab = tabs.find((t) => t.id === activeTabId)
-  const cwd = (activeTab && paneCwds[activeTab.activePaneId]) || '~'
+  const cwd = activeTab?.cwd || '~'
 
   return (
     <div className="chraude-addressbar">

@@ -1,12 +1,14 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC } from '@shared/ipcChannels'
 import type {
+  ChromeTabsChangedEvent,
   PtyCreateOptions,
   PtyCreateResult,
   PtyCwdEvent,
   PtyDataEvent,
   PtyExitEvent,
-  PtyTitleEvent
+  PtyTitleEvent,
+  ScreenPoint
 } from '@shared/types'
 
 function subscribe<Args extends unknown[]>(
@@ -42,6 +44,27 @@ const chraudeAPI = {
     onSelectTab: (cb: (index: number) => void): (() => void) => subscribe(IPC.menuSelectTab, cb),
     onSplitRight: (cb: () => void): (() => void) => subscribe(IPC.menuSplitRight, cb),
     onSplitDown: (cb: () => void): (() => void) => subscribe(IPC.menuSplitDown, cb)
+  },
+  chrome: {
+    newTab: (): void => ipcRenderer.send(IPC.chromeNewTab),
+    closeTab: (tabId: string): void => ipcRenderer.send(IPC.chromeCloseTab, tabId),
+    activateTab: (tabId: string): void => ipcRenderer.send(IPC.chromeActivateTab, tabId),
+    detachTab: (tabId: string, screenPoint: { x: number; y: number }): void =>
+      ipcRenderer.send(IPC.chromeDetachTab, tabId, screenPoint),
+    getTabs: (): Promise<ChromeTabsChangedEvent> => ipcRenderer.invoke(IPC.chromeGetTabs),
+    onTabsChanged: (cb: (event: ChromeTabsChangedEvent) => void): (() => void) =>
+      subscribe(IPC.chromeTabsChanged, cb)
+  },
+  tab: {
+    reportTitle: (tabId: string, title: string): void => {
+      ipcRenderer.send(IPC.tabReportTitle, tabId, title)
+    },
+    reportCwd: (tabId: string, cwd: string): void => {
+      ipcRenderer.send(IPC.tabReportCwd, tabId, cwd)
+    }
+  },
+  system: {
+    getCursorScreenPoint: (): Promise<ScreenPoint> => ipcRenderer.invoke(IPC.systemGetCursorPoint)
   }
 }
 

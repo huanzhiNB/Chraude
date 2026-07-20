@@ -28,3 +28,19 @@ export interface PtyCwdEvent {
   sessionId: string
   cwd: string
 }
+
+export interface ChromeTabSummary {
+  id: string
+  title: string
+  cwd: string
+}
+
+export interface ChromeTabsChangedEvent {
+  tabs: ChromeTabSummary[]
+  activeTabId: string | null
+}
+
+export interface ScreenPoint {
+  x: number
+  y: number
+}

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { TabState } from './types'
+import type { SplitTreeNode } from './types'
 import {
   createPaneNode,
   findFirstLeafId,
@@ -8,129 +8,63 @@ import {
   updateSplitSizes
 } from './paneTree'
 
-function createTab(title = 'Terminal'): TabState {
-  const pane = createPaneNode()
-  return { id: crypto.randomUUID(), title, root: pane, activePaneId: pane.id }
-}
+// A tab-content WebContentsView only ever hosts one tab, so unlike the old
+// single-renderer design this store has no outer `tabs` array — just this
+// view's own split tree. Tab-level concerns (add/close/switch/reorder tabs)
+// live in main's WindowManager + the chrome window's separate chromeStore.
+export type CloseActivePaneResult = 'closed-pane' | 'close-tab'
 
-interface TabStore {
-  tabs: TabState[]
-  activeTabId: string
-  // Foreground-process-derived titles, keyed by paneId (not tabId): a tab's
-  // displayed title is whichever pane in it is currently active, so
-  // switching focus between panes naturally updates the tab title too.
+interface TabContentStore {
+  root: SplitTreeNode
+  activePaneId: string
+  // Foreground-process-derived titles/cwds, keyed by paneId — a tab's
+  // effective title/cwd is whichever pane is currently active, so switching
+  // focus between panes naturally changes what gets reported up to chrome.
   paneTitles: Record<string, string>
-  // Same per-pane-keyed pattern as paneTitles, for the directory pill.
   paneCwds: Record<string, string>
-  addTab: () => void
-  closeTab: (tabId: string) => void
-  setActiveTab: (tabId: string) => void
-  selectTabByIndex: (index: number) => void
-  reorderTabs: (fromId: string, toId: string) => void
-  setActivePane: (tabId: string, paneId: string) => void
+  setActivePane: (paneId: string) => void
   splitActivePane: (direction: 'row' | 'column') => void
-  closeActivePane: () => void
-  resizeSplit: (tabId: string, splitId: string, sizes: number[]) => void
+  // 'close-tab' means the pane closed was this tab's only one — the caller
+  // is responsible for telling main to close the tab itself.
+  closeActivePane: () => CloseActivePaneResult
+  resizeSplit: (splitId: string, sizes: number[]) => void
   setPaneTitle: (paneId: string, title: string) => void
   setPaneCwd: (paneId: string, cwd: string) => void
 }
 
-const initialTab = createTab()
+const initialPane = createPaneNode()
 
-export const useTabStore = create<TabStore>((set, get) => ({
-  tabs: [initialTab],
-  activeTabId: initialTab.id,
+export const useTabStore = create<TabContentStore>((set, get) => ({
+  root: initialPane,
+  activePaneId: initialPane.id,
   paneTitles: {},
   paneCwds: {},
 
-  addTab: () => {
-    const tab = createTab()
-    set((s) => ({ tabs: [...s.tabs, tab], activeTabId: tab.id }))
-  },
-
-  closeTab: (tabId) => {
-    const { tabs, activeTabId } = get()
-    const index = tabs.findIndex((t) => t.id === tabId)
-    if (index === -1) return
-
-    // Chrome semantics: closing the last tab closes the window.
-    if (tabs.length === 1) {
-      window.close()
-      return
-    }
-
-    const remaining = tabs.filter((t) => t.id !== tabId)
-    const nextActiveId =
-      activeTabId === tabId ? remaining[Math.min(index, remaining.length - 1)].id : activeTabId
-    set({ tabs: remaining, activeTabId: nextActiveId })
-  },
-
-  setActiveTab: (tabId) => set({ activeTabId: tabId }),
-
-  selectTabByIndex: (index) => {
-    const tab = get().tabs[index]
-    if (tab) set({ activeTabId: tab.id })
-  },
-
-  reorderTabs: (fromId, toId) => {
-    const { tabs } = get()
-    const fromIndex = tabs.findIndex((t) => t.id === fromId)
-    const toIndex = tabs.findIndex((t) => t.id === toId)
-    if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return
-
-    const reordered = [...tabs]
-    const [moved] = reordered.splice(fromIndex, 1)
-    reordered.splice(toIndex, 0, moved)
-    set({ tabs: reordered })
-  },
-
-  setActivePane: (tabId, paneId) => {
-    set((s) => ({
-      tabs: s.tabs.map((t) => (t.id === tabId ? { ...t, activePaneId: paneId } : t))
-    }))
-  },
+  setActivePane: (paneId) => set({ activePaneId: paneId }),
 
   splitActivePane: (direction) => {
-    const { tabs, activeTabId } = get()
-    const index = tabs.findIndex((t) => t.id === activeTabId)
-    if (index === -1) return
-    const tab = tabs[index]
-    const { tree, newPaneId } = splitPaneNode(tab.root, tab.activePaneId, direction)
-    const updated = [...tabs]
-    updated[index] = { ...tab, root: tree, activePaneId: newPaneId }
-    set({ tabs: updated })
+    const { root, activePaneId } = get()
+    const { tree, newPaneId } = splitPaneNode(root, activePaneId, direction)
+    set({ root: tree, activePaneId: newPaneId })
   },
 
-  // iTerm2/tmux semantics: closes the focused pane; if it was the tab's only
-  // pane, closes the tab (which itself closes the window if it's the last tab).
   closeActivePane: () => {
-    const { tabs, activeTabId, closeTab } = get()
-    const index = tabs.findIndex((t) => t.id === activeTabId)
-    if (index === -1) return
-    const tab = tabs[index]
-
-    if (tab.root.type === 'leaf') {
-      closeTab(tab.id)
-      return
+    const { root, activePaneId } = get()
+    if (root.type === 'leaf') {
+      return 'close-tab'
     }
 
-    const newRoot = removePaneNode(tab.root, tab.activePaneId)
+    const newRoot = removePaneNode(root, activePaneId)
     if (!newRoot) {
-      closeTab(tab.id)
-      return
+      return 'close-tab'
     }
 
-    const updated = [...tabs]
-    updated[index] = { ...tab, root: newRoot, activePaneId: findFirstLeafId(newRoot) }
-    set({ tabs: updated })
+    set({ root: newRoot, activePaneId: findFirstLeafId(newRoot) })
+    return 'closed-pane'
   },
 
-  resizeSplit: (tabId, splitId, sizes) => {
-    set((s) => ({
-      tabs: s.tabs.map((t) =>
-        t.id === tabId ? { ...t, root: updateSplitSizes(t.root, splitId, sizes) } : t
-      )
-    }))
+  resizeSplit: (splitId, sizes) => {
+    set((s) => ({ root: updateSplitSizes(s.root, splitId, sizes) }))
   },
 
   setPaneTitle: (paneId, title) => {

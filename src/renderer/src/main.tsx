@@ -1,7 +1,8 @@
 import './assets/main.css'
 
 import { createRoot } from 'react-dom/client'
-import App from './App'
+import ChromeApp from './ChromeApp'
+import TabContentApp from './TabContentApp'
 
 window.addEventListener('error', (e) =>
   console.error('[window error]', e.error?.stack || e.message)
@@ -15,4 +16,9 @@ window.addEventListener('unhandledrejection', (e) =>
 // dev-only double-invoke is meant to catch. Double-mounting xterm.js also
 // hits a real xterm.js bug where an in-flight async Viewport resize callback
 // fires after the first instance's dispose() has already torn down its core.
-createRoot(document.getElementById('root')!).render(<App />)
+const params = new URLSearchParams(window.location.search)
+const isTabContent = params.get('mode') === 'tab'
+
+createRoot(document.getElementById('root')!).render(
+  isTabContent ? <TabContentApp tabId={params.get('tab') ?? ''} /> : <ChromeApp />
+)

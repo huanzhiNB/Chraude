@@ -11,5 +11,14 @@ export const IPC = {
   menuClose: 'menu:close',
   menuSelectTab: 'menu:select-tab',
   menuSplitRight: 'menu:split-right',
-  menuSplitDown: 'menu:split-down'
+  menuSplitDown: 'menu:split-down',
+  chromeNewTab: 'chrome:new-tab',
+  chromeCloseTab: 'chrome:close-tab',
+  chromeActivateTab: 'chrome:activate-tab',
+  chromeDetachTab: 'chrome:detach-tab',
+  chromeGetTabs: 'chrome:get-tabs',
+  chromeTabsChanged: 'chrome:tabs-changed',
+  tabReportTitle: 'tab:report-title',
+  tabReportCwd: 'tab:report-cwd',
+  systemGetCursorPoint: 'system:get-cursor-point'
 } as const
