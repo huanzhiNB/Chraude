@@ -44,3 +44,12 @@ export interface ScreenPoint {
   x: number
   y: number
 }
+
+export interface RecentDirectoryEntry {
+  // Full path as recorded (already ~-abbreviated by shell.ts's getShellCwd).
+  path: string
+  // Last path segment, e.g. "msp-ios-sdk" — shown as the entry's title.
+  name: string
+  // Everything before that, e.g. "~/Huanzhi" — shown as secondary text.
+  parent: string
+}

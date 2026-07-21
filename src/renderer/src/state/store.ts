@@ -22,6 +22,14 @@ interface TabContentStore {
   // focus between panes naturally changes what gets reported up to chrome.
   paneTitles: Record<string, string>
   paneCwds: Record<string, string>
+  // sessionId isn't otherwise exposed outside TerminalPane's own closure —
+  // the Recent-directories overlay needs it to write a `cd` command into the
+  // right pane's pty from outside that component.
+  paneSessionIds: Record<string, string>
+  // Whether the user has typed anything into this pane yet — drives the
+  // Recent-directories overlay shown on a freshly created pane; false until
+  // the first keystroke (or a Recent entry is clicked, which counts as one).
+  paneStartedTyping: Record<string, boolean>
   setActivePane: (paneId: string) => void
   splitActivePane: (direction: 'row' | 'column') => void
   // 'close-tab' means the pane closed was this tab's only one — the caller
@@ -30,6 +38,8 @@ interface TabContentStore {
   resizeSplit: (splitId: string, sizes: number[]) => void
   setPaneTitle: (paneId: string, title: string) => void
   setPaneCwd: (paneId: string, cwd: string) => void
+  setPaneSessionId: (paneId: string, sessionId: string) => void
+  markPaneStartedTyping: (paneId: string) => void
 }
 
 const initialPane = createPaneNode()
@@ -39,6 +49,8 @@ export const useTabStore = create<TabContentStore>((set, get) => ({
   activePaneId: initialPane.id,
   paneTitles: {},
   paneCwds: {},
+  paneSessionIds: {},
+  paneStartedTyping: {},
 
   setActivePane: (paneId) => set({ activePaneId: paneId }),
 
@@ -73,5 +85,19 @@ export const useTabStore = create<TabContentStore>((set, get) => ({
 
   setPaneCwd: (paneId, cwd) => {
     set((s) => ({ paneCwds: { ...s.paneCwds, [paneId]: cwd } }))
+  },
+
+  setPaneSessionId: (paneId, sessionId) => {
+    set((s) => ({ paneSessionIds: { ...s.paneSessionIds, [paneId]: sessionId } }))
+  },
+
+  markPaneStartedTyping: (paneId) => {
+    // Skip the update once already true so this can be called on every
+    // keystroke without triggering a re-render each time.
+    set((s) =>
+      s.paneStartedTyping[paneId]
+        ? s
+        : { paneStartedTyping: { ...s.paneStartedTyping, [paneId]: true } }
+    )
   }
 }))

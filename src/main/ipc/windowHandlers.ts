@@ -2,8 +2,12 @@ import { ipcMain, screen, BrowserWindow } from 'electron'
 import { IPC } from '@shared/ipcChannels'
 import type { ScreenPoint } from '@shared/types'
 import type { WindowManager } from '../windows/WindowManager'
+import type { RecentDirectoriesStore } from '../recent/RecentDirectoriesStore'
 
-export function registerWindowHandlers(windowManager: WindowManager): void {
+export function registerWindowHandlers(
+  windowManager: WindowManager,
+  recentDirectories: RecentDirectoriesStore
+): void {
   ipcMain.on(IPC.chromeNewTab, (event) => {
     const win = BrowserWindow.fromWebContents(event.sender)
     if (win) windowManager.createTab(win.id)
@@ -33,7 +37,12 @@ export function registerWindowHandlers(windowManager: WindowManager): void {
 
   ipcMain.on(IPC.tabReportCwd, (_event, tabId: string, cwd: string) => {
     windowManager.updateTabMeta(tabId, { cwd })
+    recentDirectories.record(cwd)
   })
+
+  ipcMain.handle(IPC.recentGetDirectories, (_event, limit?: number) =>
+    recentDirectories.list(limit)
+  )
 
   // Chromium doesn't reliably keep delivering DOM pointermove events to a
   // renderer once the cursor exits that window's own bounds (e.g. dragging a

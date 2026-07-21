@@ -5,6 +5,17 @@ import type { SplitTreeNode } from '../../state/types'
 import ErrorBoundary from '../ErrorBoundary'
 import TerminalPane from './TerminalPane'
 import SplitResizer from './SplitResizer'
+import RecentMenu from './RecentMenu'
+
+// RecentDirectoryEntry paths are already `~`-abbreviated (see shell.ts's
+// getShellCwd). Wrapping a leading `~` in double quotes would suppress the
+// shell's tilde expansion, so it's kept outside the quoted segment — zsh
+// (Chraude's login shell) still expands a `~` immediately followed by a
+// quoted continuation, e.g. `~"/Huanzhi/msp-ios-sdk"`.
+function quoteShellPath(path: string): string {
+  const escaped = path.replace(/"/g, '\\"')
+  return path.startsWith('~') ? `~"${escaped.slice(1)}"` : `"${escaped}"`
+}
 
 interface PaneGridProps {
   root: SplitTreeNode
@@ -20,8 +31,25 @@ export default function PaneGrid({
   const containerRef = useRef<HTMLDivElement>(null)
   const setActivePane = useTabStore((s) => s.setActivePane)
   const resizeSplit = useTabStore((s) => s.resizeSplit)
+  const paneStartedTyping = useTabStore((s) => s.paneStartedTyping)
 
   const { panes, resizers } = computeLayout(root)
+
+  const runInPane = (paneId: string, command: string): void => {
+    const sessionId = useTabStore.getState().paneSessionIds[paneId]
+    if (sessionId) {
+      window.chraude.pty.write(sessionId, `${command}\r`)
+    }
+    useTabStore.getState().markPaneStartedTyping(paneId)
+  }
+
+  const handleSelectRecentPath = (paneId: string, path: string): void => {
+    runInPane(paneId, `cd ${quoteShellPath(path)}`)
+  }
+
+  const handleLaunchClaude = (paneId: string, path: string): void => {
+    runInPane(paneId, `cd ${quoteShellPath(path)} && claude`)
+  }
 
   const handleResizerMouseDown =
     (resizer: ResizerSpec) =>
@@ -89,6 +117,12 @@ export default function PaneGrid({
           <ErrorBoundary>
             <TerminalPane paneId={paneId} visible={visible} focused={paneId === activePaneId} />
           </ErrorBoundary>
+          {!paneStartedTyping[paneId] && (
+            <RecentMenu
+              onSelectPath={(path) => handleSelectRecentPath(paneId, path)}
+              onLaunchClaude={(path) => handleLaunchClaude(paneId, path)}
+            />
+          )}
         </div>
       ))}
       {resizers.map((resizer) => (
