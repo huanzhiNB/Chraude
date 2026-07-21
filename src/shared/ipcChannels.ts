@@ -20,5 +20,6 @@ export const IPC = {
   chromeTabsChanged: 'chrome:tabs-changed',
   tabReportTitle: 'tab:report-title',
   tabReportCwd: 'tab:report-cwd',
-  systemGetCursorPoint: 'system:get-cursor-point'
+  systemGetCursorPoint: 'system:get-cursor-point',
+  recentGetDirectories: 'recent:get-directories'
 } as const

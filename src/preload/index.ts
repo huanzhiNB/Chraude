@@ -8,6 +8,7 @@ import type {
   PtyDataEvent,
   PtyExitEvent,
   PtyTitleEvent,
+  RecentDirectoryEntry,
   ScreenPoint
 } from '@shared/types'
 
@@ -65,6 +66,10 @@ const chraudeAPI = {
   },
   system: {
     getCursorScreenPoint: (): Promise<ScreenPoint> => ipcRenderer.invoke(IPC.systemGetCursorPoint)
+  },
+  recent: {
+    getDirectories: (limit?: number): Promise<RecentDirectoryEntry[]> =>
+      ipcRenderer.invoke(IPC.recentGetDirectories, limit)
   }
 }
 

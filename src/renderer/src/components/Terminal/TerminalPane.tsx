@@ -70,6 +70,7 @@ export default function TerminalPane({
         return
       }
       sessionIdRef.current = id
+      useTabStore.getState().setPaneSessionId(paneId, id)
 
       unsubData = window.chraude.pty.onData(({ sessionId: sid, chunk }) => {
         if (sid === id) term.write(chunk)
@@ -87,6 +88,7 @@ export default function TerminalPane({
 
     const dataDisposable = term.onData((data) => {
       if (sessionIdRef.current) window.chraude.pty.write(sessionIdRef.current, data)
+      useTabStore.getState().markPaneStartedTyping(paneId)
     })
 
     const resizeObserver = new ResizeObserver(() => {
