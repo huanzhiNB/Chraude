@@ -36,3 +36,24 @@
   white-space: nowrap;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
+
+/* When a conversation title is also shown, give the path a bounded share of
+   the pill instead of letting it consume all the space meant for the title. */
+.chraude-addressbar__path--compact {
+  flex: 0 1 auto;
+  max-width: 40%;
+}
+
+.chraude-addressbar__separator {
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.chraude-addressbar__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #e8e8e8;
+}
