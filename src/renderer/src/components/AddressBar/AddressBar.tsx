@@ -23,12 +23,23 @@ export default function AddressBar(): React.JSX.Element {
 
   const activeTab = tabs.find((t) => t.id === activeTabId)
   const cwd = activeTab?.cwd || '~'
+  const title = activeTab?.title
 
   return (
     <div className="chraude-addressbar">
       <div className="chraude-addressbar__pill">
         <FolderIcon />
-        <span className="chraude-addressbar__path">{cwd}</span>
+        <span
+          className={`chraude-addressbar__path${title ? ' chraude-addressbar__path--compact' : ''}`}
+        >
+          {cwd}
+        </span>
+        {title && (
+          <>
+            <span className="chraude-addressbar__separator">—</span>
+            <span className="chraude-addressbar__title">{title}</span>
+          </>
+        )}
       </div>
     </div>
   )

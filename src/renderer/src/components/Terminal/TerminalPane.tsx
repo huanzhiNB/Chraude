@@ -36,6 +36,15 @@ export default function TerminalPane({
   const fitAddonRef = useRef<FitAddon>(null)
   const termRef = useRef<Terminal>(null)
   const sessionIdRef = useRef<string>(null)
+  // The foreground-process-name poll (see PtyManager) fires every ~1.5s and
+  // would otherwise stomp a custom title a program sets via an OSC escape
+  // sequence (e.g. Claude Code setting the tab title to its conversation
+  // summary) back to the generic process name almost immediately. Track
+  // which process name was in effect when the last OSC title was set, and
+  // keep that title as long as the same process is still in the foreground;
+  // once the foreground process changes, fall back to its name again.
+  const lastProcessNameRef = useRef<string>('')
+  const oscTitleOwnerRef = useRef<string | null>(null)
 
   useEffect(() => {
     const container = containerRef.current
@@ -79,7 +88,11 @@ export default function TerminalPane({
         if (sid === id) term.write('\r\n[process exited]\r\n')
       })
       unsubTitle = window.chraude.pty.onTitle(({ sessionId: sid, title }) => {
-        if (sid === id) useTabStore.getState().setPaneTitle(paneId, title)
+        if (sid !== id) return
+        lastProcessNameRef.current = title
+        if (oscTitleOwnerRef.current === title) return
+        oscTitleOwnerRef.current = null
+        useTabStore.getState().setPaneTitle(paneId, title)
       })
       unsubCwd = window.chraude.pty.onCwd(({ sessionId: sid, cwd }) => {
         if (sid === id) useTabStore.getState().setPaneCwd(paneId, cwd)
@@ -89,6 +102,15 @@ export default function TerminalPane({
     const dataDisposable = term.onData((data) => {
       if (sessionIdRef.current) window.chraude.pty.write(sessionIdRef.current, data)
       useTabStore.getState().markPaneStartedTyping(paneId)
+    })
+
+    // xterm.js parses OSC 0/2 title-setting escape sequences on its own —
+    // this is how Claude Code sets the terminal title to the conversation
+    // summary. Give it precedence over the generic process-name poll above.
+    const titleChangeDisposable = term.onTitleChange((title) => {
+      if (!title) return
+      oscTitleOwnerRef.current = lastProcessNameRef.current
+      useTabStore.getState().setPaneTitle(paneId, title)
     })
 
     const resizeObserver = new ResizeObserver(() => {
@@ -102,6 +124,7 @@ export default function TerminalPane({
       disposed = true
       resizeObserver.disconnect()
       dataDisposable.dispose()
+      titleChangeDisposable.dispose()
       unsubData?.()
       unsubExit?.()
       unsubTitle?.()
