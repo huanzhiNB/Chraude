@@ -26,7 +26,8 @@ export function registerPtyHandlers(): PtyHandlers {
       owners.delete(event.sessionId)
     },
     (event) => send(event.sessionId, IPC.ptyTitle, event),
-    (event) => send(event.sessionId, IPC.ptyCwd, event)
+    (event) => send(event.sessionId, IPC.ptyCwd, event),
+    (event) => send(event.sessionId, IPC.ptyRunningClaude, event)
   )
 
   ipcMain.handle(IPC.ptyCreate, (event, opts: PtyCreateOptions) => {

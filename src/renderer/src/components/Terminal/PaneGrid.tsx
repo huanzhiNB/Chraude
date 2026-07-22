@@ -2,31 +2,34 @@ import { useRef } from 'react'
 import { useTabStore } from '../../state/store'
 import { computeLayout, findSplitNode, type ResizerSpec } from '../../state/paneTree'
 import type { SplitTreeNode } from '../../state/types'
+import { quoteShellPath } from '@shared/shellQuoting'
 import ErrorBoundary from '../ErrorBoundary'
 import TerminalPane from './TerminalPane'
 import SplitResizer from './SplitResizer'
 import RecentMenu from './RecentMenu'
 
-// RecentDirectoryEntry paths are already `~`-abbreviated (see shell.ts's
-// getShellCwd). Wrapping a leading `~` in double quotes would suppress the
-// shell's tilde expansion, so it's kept outside the quoted segment — zsh
-// (Chraude's login shell) still expands a `~` immediately followed by a
-// quoted continuation, e.g. `~"/Huanzhi/msp-ios-sdk"`.
-function quoteShellPath(path: string): string {
-  const escaped = path.replace(/"/g, '\\"')
-  return path.startsWith('~') ? `~"${escaped.slice(1)}"` : `"${escaped}"`
-}
-
 interface PaneGridProps {
   root: SplitTreeNode
   activePaneId: string
   visible: boolean
+  // A command to run once in the tab's original pane as soon as its pty
+  // session is ready (e.g. resuming a saved Claude session) — see
+  // TabContentApp.tsx, which reads this from the tab's launch URL. Scoped to
+  // launchPaneId specifically so a later split doesn't re-run it.
+  launchCommand?: string
+  // Shown immediately for that same pane instead of the generic default
+  // while launchCommand is still starting up — see TabContentApp.tsx.
+  launchTitle?: string
+  launchPaneId?: string
 }
 
 export default function PaneGrid({
   root,
   activePaneId,
-  visible
+  visible,
+  launchCommand,
+  launchTitle,
+  launchPaneId
 }: PaneGridProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const setActivePane = useTabStore((s) => s.setActivePane)
@@ -115,7 +118,13 @@ export default function PaneGrid({
           }}
         >
           <ErrorBoundary>
-            <TerminalPane paneId={paneId} visible={visible} focused={paneId === activePaneId} />
+            <TerminalPane
+              paneId={paneId}
+              visible={visible}
+              focused={paneId === activePaneId}
+              initialCommand={paneId === launchPaneId ? launchCommand : undefined}
+              initialTitle={paneId === launchPaneId ? launchTitle : undefined}
+            />
           </ErrorBoundary>
           {!paneStartedTyping[paneId] && (
             <RecentMenu

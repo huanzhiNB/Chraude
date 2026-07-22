@@ -66,6 +66,40 @@ export function getShellCwd(pid: number): string | undefined {
   }
 }
 
+/**
+ * node-pty's own foreground-process-name getter (ptyProcess.process, used
+ * for tab titles above) turns out to be unreliable for this specific check:
+ * on macOS it reads the mutable "process name" field a program can rewrite
+ * via Node's `process.title = ...` (Claude Code does this, setting it to its
+ * own version string like "2.1.217" rather than leaving it as "claude").
+ * `ps -o comm=` instead reads the immutable original exec name recorded at
+ * process-start time, unaffected by that — so this checks whether any
+ * direct child of the shell is genuinely the `claude` binary.
+ */
+export function isClaudeForeground(shellPid: number): boolean {
+  try {
+    const childPids = execFileSync('pgrep', ['-P', String(shellPid)], {
+      encoding: 'utf8',
+      timeout: 1000
+    })
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean)
+    if (childPids.length === 0) return false
+
+    const comms = execFileSync('ps', ['-o', 'comm=', '-p', childPids.join(',')], {
+      encoding: 'utf8',
+      timeout: 1000
+    })
+    return comms.split('\n').some((line) => {
+      const comm = line.trim()
+      return comm === 'claude' || comm.endsWith('/claude')
+    })
+  } catch {
+    return false
+  }
+}
+
 export function spawnSession(opts: PtyCreateOptions): IPty {
   const shell = resolveShell()
   const loginFlag = /zsh|bash/.test(shell) ? ['-l'] : []

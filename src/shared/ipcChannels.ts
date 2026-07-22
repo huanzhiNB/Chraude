@@ -7,6 +7,7 @@ export const IPC = {
   ptyExit: 'pty:exit',
   ptyTitle: 'pty:title',
   ptyCwd: 'pty:cwd',
+  ptyRunningClaude: 'pty:running-claude',
   menuNewTab: 'menu:new-tab',
   menuClose: 'menu:close',
   menuSelectTab: 'menu:select-tab',
@@ -17,9 +18,13 @@ export const IPC = {
   chromeActivateTab: 'chrome:activate-tab',
   chromeDetachTab: 'chrome:detach-tab',
   chromeGetTabs: 'chrome:get-tabs',
+  chromeSetTabViewVisible: 'chrome:set-tab-view-visible',
   chromeTabsChanged: 'chrome:tabs-changed',
   tabReportTitle: 'tab:report-title',
   tabReportCwd: 'tab:report-cwd',
+  tabReportRunningClaude: 'tab:report-running-claude',
   systemGetCursorPoint: 'system:get-cursor-point',
-  recentGetDirectories: 'recent:get-directories'
+  recentGetDirectories: 'recent:get-directories',
+  savedSaveSession: 'saved:save-session',
+  savedGetSessions: 'saved:get-sessions'
 } as const

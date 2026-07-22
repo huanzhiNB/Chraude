@@ -25,12 +25,22 @@ interface TerminalPaneProps {
   visible: boolean
   // This specific pane is the focused one within its (possibly split) tab.
   focused: boolean
+  // A command to run once as soon as this pane's pty session is ready (e.g.
+  // resuming a saved Claude session) — see PaneGrid.tsx. Only meaningful at
+  // mount time, same stable-for-the-pane's-lifetime category as paneId.
+  initialCommand?: string
+  // Shown immediately instead of the generic default while initialCommand's
+  // own process is still starting up (e.g. a resumed session's saved
+  // title) — see PaneGrid.tsx. Same mount-time-only category as above.
+  initialTitle?: string
 }
 
 export default function TerminalPane({
   paneId,
   visible,
-  focused
+  focused,
+  initialCommand,
+  initialTitle
 }: TerminalPaneProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null)
   const fitAddonRef = useRef<FitAddon>(null)
@@ -45,6 +55,14 @@ export default function TerminalPane({
   // once the foreground process changes, fall back to its name again.
   const lastProcessNameRef = useRef<string>('')
   const oscTitleOwnerRef = useRef<string | null>(null)
+  // Separately, a resumed Claude session's seeded initial title (below)
+  // can't rely on that same string-matching trick: node-pty's foreground
+  // process name is unreliable for Claude specifically — Claude Code
+  // rewrites its own process title to a version string (e.g. "2.1.217")
+  // rather than leaving it as "claude", which we can't predict in advance.
+  // The accurate, ps-based running-Claude signal (see main/pty/shell.ts's
+  // isClaudeForeground) is what actually gates that protection instead.
+  const claudeForegroundRef = useRef(false)
 
   useEffect(() => {
     const container = containerRef.current
@@ -65,11 +83,21 @@ export default function TerminalPane({
     termRef.current = term
     fitAddonRef.current = fitAddon
 
+    if (initialTitle) {
+      // Seeded immediately (don't wait on the pty even existing yet) so the
+      // tab strip shows the resumed conversation's real title from the very
+      // first paint, protected from the process-name poll until the running-
+      // Claude check (below) confirms Claude actually exited.
+      useTabStore.getState().setPaneTitle(paneId, initialTitle)
+      claudeForegroundRef.current = true
+    }
+
     let disposed = false
     let unsubData: (() => void) | undefined
     let unsubExit: (() => void) | undefined
     let unsubTitle: (() => void) | undefined
     let unsubCwd: (() => void) | undefined
+    let unsubRunningClaude: (() => void) | undefined
 
     loadRendererAddon(term, () => disposed)
 
@@ -80,6 +108,10 @@ export default function TerminalPane({
       }
       sessionIdRef.current = id
       useTabStore.getState().setPaneSessionId(paneId, id)
+      if (initialCommand) {
+        window.chraude.pty.write(id, `${initialCommand}\r`)
+        useTabStore.getState().markPaneStartedTyping(paneId)
+      }
 
       unsubData = window.chraude.pty.onData(({ sessionId: sid, chunk }) => {
         if (sid === id) term.write(chunk)
@@ -90,12 +122,18 @@ export default function TerminalPane({
       unsubTitle = window.chraude.pty.onTitle(({ sessionId: sid, title }) => {
         if (sid !== id) return
         lastProcessNameRef.current = title
+        if (claudeForegroundRef.current) return
         if (oscTitleOwnerRef.current === title) return
         oscTitleOwnerRef.current = null
         useTabStore.getState().setPaneTitle(paneId, title)
       })
       unsubCwd = window.chraude.pty.onCwd(({ sessionId: sid, cwd }) => {
         if (sid === id) useTabStore.getState().setPaneCwd(paneId, cwd)
+      })
+      unsubRunningClaude = window.chraude.pty.onRunningClaude(({ sessionId: sid, running }) => {
+        if (sid !== id) return
+        claudeForegroundRef.current = running
+        useTabStore.getState().setPaneRunningClaude(paneId, running)
       })
     })
 
@@ -129,6 +167,7 @@ export default function TerminalPane({
       unsubExit?.()
       unsubTitle?.()
       unsubCwd?.()
+      unsubRunningClaude?.()
       try {
         term.dispose()
       } finally {
@@ -138,9 +177,10 @@ export default function TerminalPane({
         if (sessionIdRef.current) window.chraude.pty.kill(sessionIdRef.current)
       }
     }
-    // paneId is a stable identity for this component's entire mounted
-    // lifetime (see the flat-list architecture note in paneTree.ts) — this
-    // effect is intentionally mount-once and must not re-run if it changed.
+    // paneId, initialCommand, and initialTitle are all stable for this
+    // component's entire mounted lifetime (see the flat-list architecture
+    // note in paneTree.ts) — this effect is intentionally mount-once and
+    // must not re-run if they changed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

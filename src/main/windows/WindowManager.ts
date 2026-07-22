@@ -14,12 +14,20 @@ interface TabRecord {
   chromeWindowId: number
   title: string
   cwd: string
+  runningClaude: boolean
 }
 
 interface ChromeWindowRecord {
   window: BrowserWindow
   tabIds: string[]
   activeTabId: string | null
+  // The active tab's WebContentsView is a native layer that paints over
+  // everything below the chrome header (see layoutActiveTab) — including
+  // any part of a chrome-side dropdown (e.g. the settings menu) that
+  // extends past that boundary, which CSS z-index can't reach across.
+  // Temporarily detaching it (see setActiveTabViewVisible) is what makes
+  // such dropdowns visible/clickable at all.
+  tabViewHidden: boolean
 }
 
 const preloadPath = join(__dirname, '../preload/index.js')
@@ -64,7 +72,12 @@ export class WindowManager {
       }
     })
 
-    this.chromeWindows.set(window.id, { window, tabIds: [], activeTabId: null })
+    this.chromeWindows.set(window.id, {
+      window,
+      tabIds: [],
+      activeTabId: null,
+      tabViewHidden: false
+    })
 
     window.on('ready-to-show', () => window.show())
     window.on('resize', () => this.layoutActiveTab(window.id))
@@ -94,7 +107,11 @@ export class WindowManager {
     return window
   }
 
-  createTab(chromeWindowId: number): string | undefined {
+  createTab(
+    chromeWindowId: number,
+    launchCommand?: string,
+    initialTitle?: string
+  ): string | undefined {
     const chromeRecord = this.chromeWindows.get(chromeWindowId)
     if (!chromeRecord) return undefined
 
@@ -121,9 +138,22 @@ export class WindowManager {
       return { action: 'deny' }
     })
 
-    loadRenderer(view.webContents, { mode: 'tab', tab: tabId })
+    const params: Record<string, string> = { mode: 'tab', tab: tabId }
+    if (launchCommand) params.launchCommand = launchCommand
+    if (initialTitle) params.initialTitle = initialTitle
+    loadRenderer(view.webContents, params)
 
-    this.tabs.set(tabId, { id: tabId, view, chromeWindowId, title: 'Terminal', cwd: '~' })
+    this.tabs.set(tabId, {
+      id: tabId,
+      view,
+      chromeWindowId,
+      // Shown immediately in the tab strip — e.g. a resumed Claude session's
+      // saved title — rather than the generic default while its renderer
+      // spins up and the first title poll/OSC event lands.
+      title: initialTitle || 'Terminal',
+      cwd: '~',
+      runningClaude: false
+    })
     chromeRecord.tabIds.push(tabId)
 
     this.activateTab(chromeWindowId, tabId)
@@ -222,12 +252,37 @@ export class WindowManager {
     this.activateTab(newWindow.id, tabId)
   }
 
-  updateTabMeta(tabId: string, meta: { title?: string; cwd?: string }): void {
+  updateTabMeta(
+    tabId: string,
+    meta: { title?: string; cwd?: string; runningClaude?: boolean }
+  ): void {
     const tabRecord = this.tabs.get(tabId)
     if (!tabRecord) return
     if (meta.title !== undefined) tabRecord.title = meta.title
     if (meta.cwd !== undefined) tabRecord.cwd = meta.cwd
+    if (meta.runningClaude !== undefined) tabRecord.runningClaude = meta.runningClaude
     this.broadcastTabs(tabRecord.chromeWindowId)
+  }
+
+  // See ChromeWindowRecord.tabViewHidden — used by the settings dropdown so
+  // it isn't painted over by the tab's own native view.
+  setActiveTabViewVisible(chromeWindowId: number, visible: boolean): void {
+    const chromeRecord = this.chromeWindows.get(chromeWindowId)
+    if (!chromeRecord?.activeTabId) return
+    const tabRecord = this.tabs.get(chromeRecord.activeTabId)
+    if (!tabRecord) return
+
+    if (visible) {
+      if (!chromeRecord.tabViewHidden) return
+      chromeRecord.tabViewHidden = false
+      chromeRecord.window.contentView.addChildView(tabRecord.view)
+      this.layoutActiveTab(chromeWindowId)
+      tabRecord.view.webContents.focus()
+    } else {
+      if (chromeRecord.tabViewHidden) return
+      chromeRecord.tabViewHidden = true
+      chromeRecord.window.contentView.removeChildView(tabRecord.view)
+    }
   }
 
   getActiveTabView(chromeWindowId: number): WebContentsView | undefined {
@@ -270,7 +325,7 @@ export class WindowManager {
   private buildTabsSnapshot(chromeRecord: ChromeWindowRecord): ChromeTabsChangedEvent {
     const tabs: ChromeTabSummary[] = chromeRecord.tabIds.map((id) => {
       const t = this.tabs.get(id)!
-      return { id: t.id, title: t.title, cwd: t.cwd }
+      return { id: t.id, title: t.title, cwd: t.cwd, runningClaude: t.runningClaude }
     })
     return { tabs, activeTabId: chromeRecord.activeTabId }
   }

@@ -6,6 +6,7 @@ import { fixPathEnv } from './pty/shell'
 import { buildApplicationMenu } from './menu/applicationMenu'
 import { WindowManager } from './windows/WindowManager'
 import { RecentDirectoriesStore } from './recent/RecentDirectoriesStore'
+import { SavedSessionsStore } from './saved/SavedSessionsStore'
 import type { PtyManager } from './pty/PtyManager'
 
 let ptyManager: PtyManager | undefined
@@ -26,9 +27,10 @@ app.whenReady().then(() => {
   ptyManager = manager
 
   const recentDirectories = new RecentDirectoriesStore()
+  const savedSessions = new SavedSessionsStore()
 
   windowManager = new WindowManager((webContents) => killAllForOwner(webContents))
-  registerWindowHandlers(windowManager, recentDirectories)
+  registerWindowHandlers(windowManager, recentDirectories, savedSessions)
   buildApplicationMenu(windowManager)
 
   const chromeWindow = windowManager.createChromeWindow()
