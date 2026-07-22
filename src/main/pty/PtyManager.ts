@@ -5,9 +5,10 @@ import type {
   PtyCwdEvent,
   PtyDataEvent,
   PtyExitEvent,
+  PtyRunningClaudeEvent,
   PtyTitleEvent
 } from '@shared/types'
-import { getShellCwd, spawnSession } from './shell'
+import { getShellCwd, isClaudeForeground, spawnSession } from './shell'
 
 const MAX_DIMENSION = 1000
 const POLL_INTERVAL_MS = 1500
@@ -17,12 +18,14 @@ export class PtyManager {
   private pollIntervals = new Map<string, NodeJS.Timeout>()
   private lastTitles = new Map<string, string>()
   private lastCwds = new Map<string, string>()
+  private lastRunningClaude = new Map<string, boolean>()
 
   constructor(
     private onData: (event: PtyDataEvent) => void,
     private onExit: (event: PtyExitEvent) => void,
     private onTitle: (event: PtyTitleEvent) => void,
-    private onCwd: (event: PtyCwdEvent) => void
+    private onCwd: (event: PtyCwdEvent) => void,
+    private onRunningClaude: (event: PtyRunningClaudeEvent) => void
   ) {}
 
   create(opts: PtyCreateOptions): string {
@@ -90,6 +93,12 @@ export class PtyManager {
         this.lastCwds.set(sessionId, cwd)
         this.onCwd({ sessionId, cwd })
       }
+
+      const runningClaude = isClaudeForeground(ptyProcess.pid)
+      if (runningClaude !== this.lastRunningClaude.get(sessionId)) {
+        this.lastRunningClaude.set(sessionId, runningClaude)
+        this.onRunningClaude({ sessionId, running: runningClaude })
+      }
     }, POLL_INTERVAL_MS)
     this.pollIntervals.set(sessionId, interval)
   }
@@ -100,6 +109,7 @@ export class PtyManager {
     this.pollIntervals.delete(sessionId)
     this.lastTitles.delete(sessionId)
     this.lastCwds.delete(sessionId)
+    this.lastRunningClaude.delete(sessionId)
   }
 }
 

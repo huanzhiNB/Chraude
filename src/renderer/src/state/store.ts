@@ -22,6 +22,9 @@ interface TabContentStore {
   // focus between panes naturally changes what gets reported up to chrome.
   paneTitles: Record<string, string>
   paneCwds: Record<string, string>
+  // Whether the pane's foreground process is currently `claude` — drives the
+  // "Save" button in the address bar (see TerminalPane's title poll).
+  paneRunningClaude: Record<string, boolean>
   // sessionId isn't otherwise exposed outside TerminalPane's own closure —
   // the Recent-directories overlay needs it to write a `cd` command into the
   // right pane's pty from outside that component.
@@ -38,6 +41,7 @@ interface TabContentStore {
   resizeSplit: (splitId: string, sizes: number[]) => void
   setPaneTitle: (paneId: string, title: string) => void
   setPaneCwd: (paneId: string, cwd: string) => void
+  setPaneRunningClaude: (paneId: string, running: boolean) => void
   setPaneSessionId: (paneId: string, sessionId: string) => void
   markPaneStartedTyping: (paneId: string) => void
 }
@@ -49,6 +53,7 @@ export const useTabStore = create<TabContentStore>((set, get) => ({
   activePaneId: initialPane.id,
   paneTitles: {},
   paneCwds: {},
+  paneRunningClaude: {},
   paneSessionIds: {},
   paneStartedTyping: {},
 
@@ -85,6 +90,10 @@ export const useTabStore = create<TabContentStore>((set, get) => ({
 
   setPaneCwd: (paneId, cwd) => {
     set((s) => ({ paneCwds: { ...s.paneCwds, [paneId]: cwd } }))
+  },
+
+  setPaneRunningClaude: (paneId, running) => {
+    set((s) => ({ paneRunningClaude: { ...s.paneRunningClaude, [paneId]: running } }))
   },
 
   setPaneSessionId: (paneId, sessionId) => {

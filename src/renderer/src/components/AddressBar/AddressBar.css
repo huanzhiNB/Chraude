@@ -1,6 +1,7 @@
 .chraude-addressbar {
   display: flex;
   align-items: center;
+  gap: 8px;
   height: 40px;
   flex-shrink: 0;
   padding: 0 10px;
@@ -12,7 +13,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   height: 28px;
   padding: 0 12px;
   border-radius: 14px;
@@ -56,4 +58,28 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: #e8e8e8;
+}
+
+.chraude-addressbar__save-btn {
+  -webkit-app-region: no-drag;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  border-radius: 10px;
+  background: #4a4a4a;
+  color: #f0f0f0;
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.chraude-addressbar__save-btn:hover:not(:disabled) {
+  background: #565656;
+}
+
+.chraude-addressbar__save-btn:disabled {
+  cursor: default;
+  opacity: 0.7;
 }

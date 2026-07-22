@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { useChromeStore } from '../../state/chromeStore'
+import SettingsMenu from './SettingsMenu'
 import './AddressBar.css'
 
 function FolderIcon(): React.JSX.Element {
@@ -15,15 +17,37 @@ function FolderIcon(): React.JSX.Element {
   )
 }
 
-// A Chrome-omnibox-style pill showing the active pane's current directory,
-// kept live via the same foreground-process-poll pipeline as tab titles.
+function SaveIcon(): React.JSX.Element {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+      <path d="M3.5 1.5a1 1 0 0 0-1 1v12l5.5-3 5.5 3v-12a1 1 0 0 0-1-1h-9Z" />
+    </svg>
+  )
+}
+
+type SaveState = 'idle' | 'saving' | 'saved' | 'failed'
+
+// A Chrome-omnibox-style pill showing the active pane's current directory
+// and (when set) its title, kept live via the same foreground-process-poll
+// pipeline as tab titles. A "Save" button appears whenever Claude is the
+// active pane's foreground process, letting the user bookmark that
+// conversation so it can be resumed later from the settings menu.
 export default function AddressBar(): React.JSX.Element {
   const tabs = useChromeStore((s) => s.tabs)
   const activeTabId = useChromeStore((s) => s.activeTabId)
+  const [saveState, setSaveState] = useState<SaveState>('idle')
 
   const activeTab = tabs.find((t) => t.id === activeTabId)
   const cwd = activeTab?.cwd || '~'
   const title = activeTab?.title
+
+  const handleSave = async (): Promise<void> => {
+    if (!activeTab || saveState === 'saving') return
+    setSaveState('saving')
+    const result = await window.chraude.saved.saveCurrentSession(activeTab.cwd, activeTab.title)
+    setSaveState(result ? 'saved' : 'failed')
+    setTimeout(() => setSaveState('idle'), 2000)
+  }
 
   return (
     <div className="chraude-addressbar">
@@ -40,7 +64,18 @@ export default function AddressBar(): React.JSX.Element {
             <span className="chraude-addressbar__title">{title}</span>
           </>
         )}
+        {activeTab?.runningClaude && (
+          <button
+            className="chraude-addressbar__save-btn"
+            onClick={handleSave}
+            disabled={saveState === 'saving'}
+          >
+            <SaveIcon />
+            {saveState === 'saved' ? 'Saved' : saveState === 'failed' ? 'Failed' : 'Save'}
+          </button>
+        )}
       </div>
+      <SettingsMenu />
     </div>
   )
 }
